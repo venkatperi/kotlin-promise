@@ -1,8 +1,10 @@
 buildscript {
   ext {
-    libs = findProperty('libs') ?: [
-        kotlin: '1.2.30',
-    ]
+    libs = [
+        kotlin  : '1.2.30',
+        kovenant: '3.3.0',
+        spek    : '1.0.0'
+    ] << (findProperty('libs') ?: [])
   }
   repositories {
     if (nexusUrl)
@@ -12,12 +14,14 @@ buildscript {
   }
   dependencies {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.kotlin}"
+//    classpath "org.junit.platform:junit-platform-gradle-plugin:${libs.spek}"
   }
 }
 
 apply plugin: 'kotlin'
 apply plugin: 'java'
 apply plugin: 'maven'
+//apply plugin: 'org.junit.platform.gradle.plugin'
 
 
 group = "com.vperi"
@@ -27,17 +31,29 @@ repositories {
     maven { url "${nexusUrl}/repository/maven-public/" }
   else {
     mavenCentral()
+//    maven { url "http://dl.bintray.com/jetbrains/spek" }
   }
 }
 
+//junitPlatform {
+//  filters {
+//    engines {
+//      include 'spek'
+//    }
+//  }
+//}
+
 dependencies {
   implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.kotlin}"
-  implementation 'nl.komponents.kovenant:kovenant:3.3.0'
-  implementation 'nl.komponents.kovenant:kovenant-ui:3.3.0'
+  implementation "nl.komponents.kovenant:kovenant:${libs.kovenant}"
+  implementation "nl.komponents.kovenant:kovenant-ui:${libs.kovenant}"
 
   testCompile 'junit:junit:4.12'
   testCompile "org.jetbrains.kotlin:kotlin-test-junit:${libs.kotlin}"
   testCompile group: 'net.jodah', name: 'concurrentunit', version: '0.4.3'
+
+//  testCompile 'org.jetbrains.spek:spek-api:1.1.5'
+//  testRuntime 'org.jetbrains.spek:spek-junit-platform-engine:1.1.5'
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {

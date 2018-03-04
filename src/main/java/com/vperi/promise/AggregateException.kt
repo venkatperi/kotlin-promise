@@ -1,3 +1,3 @@
-package com.vperi.vow
+package com.vperi.promise
 
 class AggregateException(val items: Iterable<Exception>) : Exception()

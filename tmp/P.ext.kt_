@@ -1,0 +1,100 @@
+package com.vperi.promise
+
+/**
+ * Returns a pending [P].
+ *
+ * When the current promise settles, the supplied [onFulfilled] is called with the
+ * result if the current promise resolves. If the [onFulfilled] function:
+ *    - returns a value, the promise returned by [then] gets resolved
+ *        with the returned value as its value;
+ *    - throws an error, the promise returned by then gets rejected
+ *        with the thrown error as its value;
+ *
+ */
+
+fun <V, X> P<V>.then(
+    onRejected: FailureHandler<X>? = null,
+    onFulfilled: SuccessHandler<V, X>? = null): P<X?> = P({ resolve, reject ->
+  promise.success {
+    try {
+      val result = if (onFulfilled != null) onFulfilled(it) else null
+      resolve(result)
+    } catch (e: Exception) {
+      reject(e)
+    }
+  }.fail {
+    if (onRejected != null) {
+      try {
+        resolve(onRejected(it))
+      } catch (e: Exception) {
+        reject(e)
+      }
+    } else
+      reject(it)
+  }
+})
+
+fun <V, X> P<V>.thenP(handler: SuccessHandler<V, P<X?>>): P<X?> {
+  return P({ resolve, reject ->
+    promise.success {
+      try {
+        val result = handler(it)
+        result.then { resolve(it) }.catch { reject(it) }
+      } catch (e: Exception) {
+        reject(e)
+      }
+    }.fail { reject(it) }
+  })
+}
+//
+//@JvmName("pThen")
+//fun <V, X> P<V>.then(onRejected: FailureHandler<X>? = null,
+//    onFulfilled: SuccessHandler<V, X>? = null): P<X?> {
+//  return P({ resolve, reject ->
+//    promise.success {
+//      try {
+//        val result = handler(it)
+//        when (result) {
+//          null -> resolve(result)
+//          else -> result.then { resolve(it) }.catch { reject(it) }
+//        }
+//      } catch (e: Exception) {
+//        reject(e)
+//      }
+//    }.fail { reject(it) }
+//  })
+//}
+
+@JvmName("pThen")
+fun <V, X> P<P<V?>?>.then(onRejected: FailureHandler<X>? = null,
+    onFulfilled: SuccessHandler<V?, X>? = null): P<X?> =
+    this.thenP {
+      val p: P<V?> = it ?: P.resolve(null)
+      p.then(onRejected, onFulfilled)
+    }
+
+/**
+ * Returns a Promise and deals with rejected cases only.
+ */
+fun <X> P<*>.catch(handler: FailureHandler<X>): P<X?> =
+    this.then(onRejected = handler)
+
+/**
+ * Returns a new [P] which is resolved when the original
+ * promise is resolved. The handler is called when the promise
+ * is settled, whether fulfilled or rejected.
+ *
+ * If the handler throws an exception, the returned promise is rejected
+ * with the reason.
+ */
+fun <X> P<*>.finally(handler: (Any?) -> X): P<X> = P({ resolve, reject ->
+  val handle = { x: Any? ->
+    try {
+      resolve(handler(x))
+    } catch (e: Exception) {
+      reject(e)
+    }
+  }
+  promise.success { handle(it) }.fail { handle(it) }
+})
+

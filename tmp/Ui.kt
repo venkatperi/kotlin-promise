@@ -1,9 +1,9 @@
-package com.vperi.vow
+package com.vperi.promise
 
 import nl.komponents.kovenant.ui.failUi
 import nl.komponents.kovenant.ui.successUi
 
-fun <V, X> Vow<V>.thenUi(handler: (V) -> X): Vow<X> = Vow({ resolve, reject ->
+fun <V, X> P<V>.thenUi(handler: (V) -> X): P<X> = P({ resolve, reject ->
   val handle = { x: V ->
     try {
       resolve(handler(x))
@@ -14,7 +14,7 @@ fun <V, X> Vow<V>.thenUi(handler: (V) -> X): Vow<X> = Vow({ resolve, reject ->
   promise.successUi { handle(it) }.failUi { reject(it) }
 })
 
-fun <V, X> Vow<V>.catchUi(handler: (Exception) -> X): Vow<X> = Vow({ resolve, reject ->
+fun <X> P<*>.catchUi(handler: (Exception) -> X): P<X> = P({ resolve, reject ->
   promise.failUi {
     try {
       resolve(handler(it))
@@ -24,7 +24,7 @@ fun <V, X> Vow<V>.catchUi(handler: (Exception) -> X): Vow<X> = Vow({ resolve, re
   }
 })
 
-fun <V, X> Vow<V>.finallyUi(handler: (Any?) -> X): Vow<X> = Vow({ resolve, reject ->
+fun <X> P<*>.finallyUi(handler: (Any?) -> X): P<X> = P({ resolve, reject ->
   val handle = { x: Any? ->
     try {
       resolve(handler(x))
@@ -34,3 +34,4 @@ fun <V, X> Vow<V>.finallyUi(handler: (Any?) -> X): Vow<X> = Vow({ resolve, rejec
   }
   promise.successUi { handle(it) }.failUi { handle(it) }
 })
+
