@@ -202,4 +202,19 @@ class PTest {
     waiter.await(1000, 3)
   }
 
+  @Test
+  fun example_1() {
+    promise<String>({ resolve, _ ->
+      resolve("world")
+    }).then {
+      val str = "hello $it"
+      println(str)
+      str.length
+    }.then {
+      println(it)   //=>
+      waiter.resume()
+    }
+    waiter.await(1000)
+  }
+
 }
