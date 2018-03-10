@@ -5,7 +5,6 @@ import org.junit.Before
 import org.junit.Test
 
 class PTest {
-
   var waiter = Waiter()
 
   @Before
@@ -46,13 +45,17 @@ class PTest {
 
   @Test
   fun executor_is_invoked_asynchronously() {
+    var x = 0
     promise<Int>({ resolve, _ ->
       Thread.sleep(500)
+      x = 2
       resolve(1)
     }).then { waiter.assertTrue(it == 1) }
       .then { waiter.resume() }
       .catch { waiter.fail() }
+    waiter.assertEquals(0, x)
     waiter.await(1000)
+    waiter.assertEquals(2, x)
   }
 
   @Test
@@ -90,8 +93,13 @@ class PTest {
   @Test
   fun special_case_nothing_to_unit() {
     promise<Int>({ resolve, _ -> resolve(1) })
-      .then { throw Exception("test") }
-      .catch { waiter.assertEquals(it.message, "test") }
+      .then {
+        throw Exception("test")
+        Unit    //Can't return Nothing, so return void
+      }
+      .catch {
+        waiter.assertEquals(it.message, "test")
+      }
       .then { waiter.resume() }
     waiter.await(1000)
   }
@@ -99,7 +107,10 @@ class PTest {
   @Test
   fun catch_propagates_result_when_not_rejected() {
     P.resolve(1)
-      .catch { waiter.assertEquals(it.message, "test") }
+      .catch {
+        waiter.fail()
+        0
+      }
       .then { waiter.assertEquals(it, 1) }
       .then { waiter.resume() }
     waiter.await(1000)
@@ -146,7 +157,10 @@ class PTest {
   @Test
   fun finally_is_called_when_resolved() {
     P.resolve(1)
-      .catch { waiter.fail() }
+      .catch {
+        waiter.fail()
+        0
+      }
       .finally {
         when (it) {
           is Result.Error -> waiter.fail()
