@@ -1,9 +1,6 @@
 package com.vperi.promise
 
 import com.vperi.promise.internal.PImpl
-import com.vperi.promise.internal.toKovenant
-import com.vperi.promise.internal.wrap
-import nl.komponents.kovenant.any
 
 /**
  * Returns a [P] promise
@@ -22,48 +19,11 @@ import nl.komponents.kovenant.any
  *    If an error is thrown in the executor function, the promise
  *    is rejected.
  */
-fun <V> promise(executor: Executor<V>): P<V> {
-  return PImpl(executor)
-}
+fun <V> promise(executor: Executor<V>): P<V> = PImpl(executor)
 
-/**
- * Returns a promise that is resolved with the given [value].
- */
-fun <V> P.Companion.resolve(value: V): P<V> {
-  return promise({ r, _ -> r(value) })
-}
+fun <V> promise(value: V): P<V> = PImpl(value)
 
-/**
- * Returns a Promise object that is rejected with the given reason.
- */
-fun P.Companion.reject(reason: Exception): P<Unit> {
-  return promise({ _, r -> r(reason) })
-}
-
-/**
- *  Returns a single Promise that resolves when all of the promises in the
- *  [Iterable] argument have resolved. It rejects with the reason of the
- *  first promise that rejects.
- */
-fun <V> P.Companion.all(promises: Iterable<P<V>>): P<List<V>> =
-  P.wrap(nl.komponents.kovenant.all(promises.map { it.toKovenant() }))
-
-/**
- *  Returns a promise that resolves or rejects as soon as one of the promises
- *  in the [Iterable] resolves or rejects, with the value or reason from that promise.
- */
-fun <V> P.Companion.race(promises: Iterable<P<V>>): P<V> =
-  promise({ resolve, reject ->
-    any(promises.map { it.toKovenant() })
-      .success(resolve)
-      .fail {
-        val errors = when {
-          it.size == 1 -> it[0]
-          else -> AggregateException(it)
-        }
-        reject(errors)
-      }
-  })
+fun <V> promise(error: Throwable): P<V> = PImpl(error)
 
 /**
  * Returns a Promise and deals with rejected cases only.
@@ -77,7 +37,7 @@ fun <V> P.Companion.race(promises: Iterable<P<V>>): P<V> =
  * the original's fulfillment value.
  */
 //fun <V> P<V>.catch(onRejected: FailureHandler<*>): P<V> =
-//  PImpl({ resolve, reject ->
+//  PKovenant({ resolve, reject ->
 //    this.finally {
 //      when (it) {
 //        is Result.Value -> resolve(it.value)
@@ -115,7 +75,7 @@ fun <V> P.Companion.race(promises: Iterable<P<V>>): P<V> =
 @JvmName("pThen")
 fun <V, X> P<P<V>>.then(onResolved: SuccessHandler<V, X>): P<X> =
   promise({ resolve, reject ->
-    this.then {
+    this@then.then {
       it.then {
         try {
           resolve(onResolved(it))
@@ -125,3 +85,9 @@ fun <V, X> P<P<V>>.then(onResolved: SuccessHandler<V, X>): P<X> =
       }.catch(reject)
     }
   })
+
+fun <V> P<V>.delay(msTime: Long): P<V> =
+  this.then {
+    Thread.sleep(msTime)
+    it
+  }

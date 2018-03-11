@@ -5,7 +5,7 @@ import org.junit.Before
 import org.junit.Test
 
 class PTest {
-  var waiter = Waiter()
+  private var waiter = Waiter()
 
   @Before
   fun beforeEach() {
@@ -13,25 +13,26 @@ class PTest {
   }
 
   @Test
-  fun create_a_resolved_promise() {
+  fun already_resolved_promise() {
     P.resolve(1)
       .then {
         waiter.resume()
         waiter.assertEquals(1, it)
       }
-      .then { waiter.resume() }
-      .catch {
+      .then {
         waiter.resume()
+      }
+      .catch {
         waiter.fail("Shouldn't get here")
       }
       .then {
         waiter.resume()
       }
-    waiter.await(1000, 3)
+    waiter.await(1000, 2)
   }
 
   @Test
-  fun create_a_rejected_promise() {
+  fun already_rejected_promise() {
     P.reject(Exception("test msg"))
       .catch {
         waiter.assertEquals("test msg", it.message)
@@ -59,7 +60,7 @@ class PTest {
   }
 
   @Test
-  fun reject_asynchronously() {
+  fun reject() {
     promise<Int>({ _, reject ->
       Thread.sleep(500)
       reject(Exception("test"))
@@ -75,13 +76,13 @@ class PTest {
   }
 
   @Test
-  fun reject_with_throw_asynchronously() {
+  fun executor_throws_exception() {
     promise<Int>({ _, _ ->
       Thread.sleep(500)
       throw Exception("test")
     }).then { waiter.fail() }
       .catch {
-        waiter.assertTrue("test" == it.message)
+        waiter.assertEquals("test", it.message)
         waiter.resume()   //should get here
       }
       .then {
@@ -155,6 +156,19 @@ class PTest {
   }
 
   @Test
+  fun uncaught_exception() {
+    val uncaught = { e: Throwable? ->
+      waiter.assertEquals("uncaught exception", e?.message)
+      waiter.resume()
+    }
+    P.onUnhandledException += uncaught
+    P.reject(Exception("uncaught exception"))
+      .then { waiter.fail() }
+    waiter.await(1000)
+    P.onUnhandledException -= uncaught
+  }
+
+  @Test
   fun finally_is_called_when_resolved() {
     P.resolve(1)
       .catch {
@@ -215,6 +229,65 @@ class PTest {
       waiter.resume()
     }
     waiter.await(1000)
+  }
+
+  @Test
+  fun delay() {
+    P.resolve(1)
+      .delay(500)
+      .then {
+        waiter.assertEquals(1, it)
+        waiter.resume()
+      }
+    waiter.await(1000)
+  }
+
+  @Test
+  fun all1() {
+    P.all(listOf(P.resolve(1), P.resolve(2), P.resolve(3)))
+      .then {
+        it.reduce { acc, x -> acc + x }
+      }
+      .then {
+        waiter.assertEquals(6, it)
+        waiter.resume()
+      }
+      .catch(waiter::fail)
+    waiter.await(1000)
+  }
+
+  @Test
+  fun all2() {
+    P.all(listOf(
+      P.resolve(1).delay(1500),
+      P.resolve(2).delay(200),
+      P.resolve(3).delay(600)))
+      .then {
+        it.reduce { acc, x -> acc + x }
+      }
+      .then {
+        waiter.assertEquals(6, it)
+        waiter.resume()
+      }
+      .catch(waiter::fail)
+    waiter.await(5000)
+
+  }
+
+  @Test
+  fun all3() {
+    P.all(listOf(
+      P.resolve(1).delay(400),
+      P.reject<Int>(Exception("test")).delay(200),
+      P.resolve(3).delay(800)))
+      .then {
+        waiter.fail()
+      }
+      .catch {
+        waiter.assertEquals("test", it.message)
+        waiter.resume()
+      }
+    waiter.await(10000)
   }
 
 }

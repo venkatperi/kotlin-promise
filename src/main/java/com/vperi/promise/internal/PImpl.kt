@@ -1,63 +1,103 @@
 package com.vperi.promise.internal
 
 import com.vperi.promise.*
-import nl.komponents.kovenant.deferred
-import nl.komponents.kovenant.task
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicInteger
 
-class PImpl<V> internal constructor(executor: Executor<V>) : P<V> {
+class PImpl<V> internal constructor(
+  executor: Executor<V>? = null,
+  var result: Result<V>? = null) : P<V>() {
 
-  private val defer = deferred<V, Exception>()
+  private val timing = Timing()
+  val id: Int = nextId.getAndIncrement()
 
-  internal val promise by lazy { defer.promise }
+  private var future: CompletableFuture<V>? = null
+  private val settled: CompletableFuture<Result<V>>
+  override val isSettled: Boolean
+    get() = settled.isDone
 
-  override fun then(): P<Unit> =
-    doThen({})
+  constructor(value: V) : this(result = Result.Value(value))
 
-  override fun <X> then(onResolved: SuccessHandler<V, X>): P<X> =
-    doThen(onResolved)
-
-  override fun <X> then(onResolved: SuccessHandler<V, X>,
-    onRejected: FailureHandler<X>): P<X> =
-    doThen(onResolved, onRejected)
-
-  override fun catch(onRejected: FailureHandler<V>): P<V> =
-    doThen({ it }, onRejected)
-
-  override fun <X> finally(handler: (Result<V>) -> X): P<X> =
-    doThen({ handler(Result.Value(it)) },
-      { handler(Result.Error(it)) })
+  constructor(error: Throwable) : this(result = Result.Error(error))
 
   init {
-    task {
-      try {
-        executor(defer::resolve, defer::reject)
-      } catch (e: Exception) {
-        defer.reject(e)
+    settled = when {
+      result != null -> CompletableFuture.completedFuture(result)
+      else -> {
+        future = CompletableFuture()
+        future!!.handleAsync { value: V, error: Throwable? ->
+          when {
+            error != null -> Result.Error<V>(error.cause ?: error)
+            else -> Result.Value(value!!)
+          }
+        }
       }
-    }.fail {
-      defer.reject(it)
+    }
+
+    if (executor != null) {
+      if (result != null)
+        throw IllegalArgumentException("Can't set both of executor and result")
+
+      CompletableFuture.runAsync {
+        timing.mark("executor")
+        executor(this::resolve, this::reject)
+      }.handle { _, e: Throwable? ->
+        if (e != null)
+          reject(e.cause ?: e)
+      }
     }
   }
 
-  private fun <X> doThen(onResolved: SuccessHandler<V, X>,
-    onRejected: FailureHandler<X>? = null): P<X> =
-    PImpl({ resolve, reject ->
-      promise.success {
-        try {
-          resolve(onResolved(it))
-        } catch (e: Exception) {
-          reject(e)
-        }
-      }.fail {
-        if (onRejected != null) {
-          try {
-            resolve(onRejected(it))
-          } catch (e: Exception) {
-            reject(e)
+  fun resolve(value: V) {
+    future?.complete(value)
+  }
+
+  fun reject(error: Throwable) {
+    future?.completeExceptionally(error)
+    if (settled.numberOfDependents == 0) {
+      onUnhandledException(error)
+    }
+  }
+
+  override fun cancel() {
+    future?.cancel(true)
+    settled.cancel(true)
+  }
+
+  override fun <X> addHandler(onResolved: SuccessHandler<V, X>,
+    onRejected: FailureHandler<X>?): P<X> {
+    val p = PImpl<X>()
+    settled.thenAcceptAsync { result ->
+      try {
+        when (result) {
+          is Result.Value -> p.resolve(onResolved(result.value))
+          is Result.Error -> {
+            if (onRejected != null)
+              p.resolve(onRejected.invoke(result.error))
+            else
+              p.reject(result.error)
           }
-        } else
-          reject(it)
+        }
+      } catch (e: Exception) {
+        p.reject(e)
       }
-    })
+    }
+    return p
+  }
+
+  override fun toString(): String {
+    val params = HashMap<String, String>()
+    params["result"] = when {
+      !isSettled -> "pending"
+      else -> result.toString()
+    }
+    params["id"] = id.toString()
+    return params.toSortedMap().toString()
+  }
+
+  companion object {
+    var nextId = AtomicInteger(0)
+  }
+
 }
 

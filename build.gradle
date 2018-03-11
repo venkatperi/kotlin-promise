@@ -41,6 +41,9 @@ dokka {
 }
 
 dependencies {
+  implementation 'com.google.guava:guava:24.0-jre'
+  compile project(':kotlin-util')
+
   implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.kotlin}"
   implementation "nl.komponents.kovenant:kovenant:${libs.kovenant}"
 
