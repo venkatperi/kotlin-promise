@@ -1,9 +1,15 @@
 package com.vperi.promise
 
-import com.vperi.promise.internal.all
 import net.jodah.concurrentunit.Waiter
 import org.junit.Before
 import org.junit.Test
+
+fun <T> rejectWithDelay(error: Throwable, delay: Long): P<T> {
+  return promise { _, r ->
+    Thread.sleep(delay)
+    r(error)
+  }
+}
 
 class PTest {
   private var waiter = Waiter()
@@ -272,17 +278,13 @@ class PTest {
       }
       .catch(waiter::fail)
     waiter.await(5000)
-
   }
 
   @Test
-  fun all3() {
+  fun all_rejects_immediately_on_first_rejection() {
     P.all(listOf(
       P.resolve(1).delay(400),
-      promise { _, r ->
-        Thread.sleep(600)
-        r(Exception("test"))
-      },
+      rejectWithDelay(Exception("test"), 600),
       P.resolve(3).delay(2500),
       P.resolve(3).delay(100)))
       .then {
@@ -293,6 +295,37 @@ class PTest {
         waiter.resume()
       }
     waiter.await(10000)
+  }
+
+  @Test
+  fun race_resolves_with_first_resolution() {
+    P.race(listOf(
+      P.resolve(1).delay(1500),
+      P.resolve(2).delay(200),
+      P.resolve(3).delay(600)))
+      .then {
+        waiter.assertEquals(2, it)
+        waiter.resume()
+      }
+      .catch(waiter::fail)
+    waiter.await(5000)
+  }
+
+  @Test
+  fun race_rejects_with_first_rejection() {
+    P.race(listOf(
+      P.resolve(1).delay(1500),
+      rejectWithDelay(Exception("test"), 300),
+      P.resolve(3).delay(600)))
+      .then {
+        waiter.fail()
+      }
+      .catch {
+        waiter.assertEquals("test", it.message)
+        waiter.resume()
+      }
+
+    waiter.await(5000)
   }
 
 }

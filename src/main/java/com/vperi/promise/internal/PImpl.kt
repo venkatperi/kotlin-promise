@@ -1,5 +1,6 @@
 package com.vperi.promise.internal
 
+import com.vperi.kotlin.Timing
 import com.vperi.promise.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicInteger
@@ -19,9 +20,9 @@ class PImpl<V> internal constructor(
   override val isSettled: Boolean
     get() = settled.isDone
 
-  constructor(value: V) : this(result = Result.Value(value))
+  internal constructor(value: V) : this(result = Result.Value(value))
 
-  constructor(error: Throwable) : this(result = Result.Error(error))
+  internal constructor(error: Throwable) : this(result = Result.Error(error))
 
   constructor(f: CompletableFuture<V>) : this(null, null, f)
 

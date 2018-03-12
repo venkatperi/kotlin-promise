@@ -36,6 +36,7 @@ repositories {
 }
 
 dokka {
+  includes = ['readme.md']
   outputFormat = 'html'
   outputDirectory = "$buildDir/javadoc"
 }
