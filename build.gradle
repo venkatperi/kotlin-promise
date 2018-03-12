@@ -42,10 +42,11 @@ dokka {
 
 dependencies {
   implementation 'com.google.guava:guava:24.0-jre'
+  compile 'com.spotify:completable-futures:0.3.1'
   compile project(':kotlin-util')
 
   implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.kotlin}"
-  implementation "nl.komponents.kovenant:kovenant:${libs.kovenant}"
+//  implementation "nl.komponents.kovenant:kovenant:${libs.kovenant}"
 
   testCompile 'junit:junit:4.12'
   testCompile "org.jetbrains.kotlin:kotlin-test-junit:${libs.kotlin}"

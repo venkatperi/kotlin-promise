@@ -6,13 +6,16 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class PImpl<V> internal constructor(
   executor: Executor<V>? = null,
-  var result: Result<V>? = null) : P<V>() {
+  var result: Result<V>? = null,
+  fut: CompletableFuture<V>? = null) : P<V>() {
 
   private val timing = Timing()
   val id: Int = nextId.getAndIncrement()
 
   private var future: CompletableFuture<V>? = null
+  val resultFuture: CompletableFuture<V>
   private val settled: CompletableFuture<Result<V>>
+
   override val isSettled: Boolean
     get() = settled.isDone
 
@@ -20,17 +23,26 @@ class PImpl<V> internal constructor(
 
   constructor(error: Throwable) : this(result = Result.Error(error))
 
+  constructor(f: CompletableFuture<V>) : this(null, null, f)
+
   init {
     settled = when {
       result != null -> CompletableFuture.completedFuture(result)
       else -> {
-        future = CompletableFuture()
-        future!!.handleAsync { value: V, error: Throwable? ->
+        future = fut ?: CompletableFuture()
+        future!!.handleAsync { value: V?, error: Throwable? ->
           when {
             error != null -> Result.Error<V>(error.cause ?: error)
             else -> Result.Value(value!!)
           }
         }
+      }
+    }
+
+    resultFuture = settled.thenApplyAsync {
+      when (it) {
+        is Result.Value -> it.value
+        is Result.Error -> throw it.error
       }
     }
 
@@ -54,7 +66,7 @@ class PImpl<V> internal constructor(
 
   fun reject(error: Throwable) {
     future?.completeExceptionally(error)
-    if (settled.numberOfDependents == 0) {
+    if (settled.numberOfDependents <= 1) {
       onUnhandledException(error)
     }
   }
@@ -100,4 +112,5 @@ class PImpl<V> internal constructor(
   }
 
 }
+
 

@@ -1,5 +1,6 @@
 package com.vperi.promise
 
+import com.vperi.promise.internal.all
 import net.jodah.concurrentunit.Waiter
 import org.junit.Before
 import org.junit.Test
@@ -253,7 +254,7 @@ class PTest {
         waiter.resume()
       }
       .catch(waiter::fail)
-    waiter.await(1000)
+    waiter.await(100000)
   }
 
   @Test
@@ -278,8 +279,12 @@ class PTest {
   fun all3() {
     P.all(listOf(
       P.resolve(1).delay(400),
-      P.reject<Int>(Exception("test")).delay(200),
-      P.resolve(3).delay(800)))
+      promise { _, r ->
+        Thread.sleep(600)
+        r(Exception("test"))
+      },
+      P.resolve(3).delay(2500),
+      P.resolve(3).delay(100)))
       .then {
         waiter.fail()
       }

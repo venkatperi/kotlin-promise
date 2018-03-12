@@ -63,36 +63,36 @@ abstract class P<V> {
         }
       })
 
-    @JvmStatic
-    fun <V> all(promises: List<P<V>>): P<List<V>> {
-      val results = HashMap<Int, V>()
-      val done = AtomicInteger(0)
-      return promise({ res, rej ->
-        val items = ImmutableList.copyOf(promises)
-
-        val cancelAndReject = { e: Throwable ->
-          items.forEach {
-            if (!it.isSettled)
-              it.cancel()
-          }
-          rej(e)
-        }
-
-        items.forEachIndexed { index: Int, item: P<V> ->
-          item.then {
-            if (!isSettled) {
-              val completed = done.incrementAndGet()
-              results[index] = it
-              if (completed >= items.size) {
-                res((0 until items.size).map { results[it]!! })
-              }
-            }
-          }.catch {
-            cancelAndReject(it)
-          }
-        }
-      })
-    }
+//    @JvmStatic
+//    fun <V> all(promises: List<P<V>>): P<List<V>> {
+//      val results = HashMap<Int, V>()
+//      val done = AtomicInteger(0)
+//      return promise({ res, rej ->
+//        val items = ImmutableList.copyOf(promises)
+//
+//        val cancelAndReject = { e: Throwable ->
+//          items.forEach {
+//            if (!it.isSettled)
+//              it.cancel()
+//          }
+//          rej(e)
+//        }
+//
+//        items.forEachIndexed { index: Int, item: P<V> ->
+//          item.then {
+//            if (!isSettled) {
+//              val completed = done.incrementAndGet()
+//              results[index] = it
+//              if (completed >= items.size) {
+//                res((0 until items.size).map { results[it]!! })
+//              }
+//            }
+//          }.catch {
+//            cancelAndReject(it)
+//          }
+//        }
+//      })
+//    }
 
     val onUnhandledException = Event<Throwable>()
   }
