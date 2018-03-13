@@ -1,5 +1,6 @@
 buildscript {
   ext {
+    nexusUrl = findProperty('nexusUrl')
     libs = [
         kotlin  : '1.2.30',
         kovenant: '3.3.0',
@@ -9,8 +10,10 @@ buildscript {
   repositories {
     if (nexusUrl)
       maven { url "${nexusUrl}/repository/maven-public/" }
-    else
+    else {
       mavenCentral()
+      jcenter()
+    }
   }
   dependencies {
     classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.kotlin}"
@@ -24,14 +27,18 @@ apply plugin: 'java'
 apply plugin: 'maven'
 apply plugin: 'org.jetbrains.dokka'
 
-
 group = "com.vperi"
+
+ext {
+  nexusUrl = findProperty('nexusUrl')
+}
 
 repositories {
   if (nexusUrl)
     maven { url "${nexusUrl}/repository/maven-public/" }
   else {
     mavenCentral()
+    maven { url 'https://jitpack.io' }
   }
 }
 
@@ -42,23 +49,12 @@ dokka {
 }
 
 dependencies {
-  implementation 'com.google.guava:guava:24.0-jre'
-  compile 'com.spotify:completable-futures:0.3.1'
-  compile project(':kotlin-util')
-
   implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.kotlin}"
-//  implementation "nl.komponents.kovenant:kovenant:${libs.kovenant}"
+  implementation 'com.google.guava:guava:24.0-jre'
+  compile 'com.github.venkatperi:kotlin-util:1.0.2'
 
   testCompile 'junit:junit:4.12'
   testCompile "org.jetbrains.kotlin:kotlin-test-junit:${libs.kotlin}"
   testCompile group: 'net.jodah', name: 'concurrentunit', version: '0.4.3'
 }
 
-task sourcesJar(type: Jar, dependsOn: classes) {
-  classifier = 'sources'
-  from sourceSets.main.allSource
-}
-
-artifacts {
-  archives sourcesJar
-}
