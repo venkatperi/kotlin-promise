@@ -34,9 +34,10 @@ ext {
 }
 
 repositories {
-  if (nexusUrl)
+  if (nexusUrl) {
     maven { url "${nexusUrl}/repository/maven-public/" }
-  else {
+    maven { url 'https://jitpack.io' }
+  } else {
     mavenCentral()
     maven { url 'https://jitpack.io' }
   }
@@ -51,7 +52,8 @@ dokka {
 dependencies {
   implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.kotlin}"
   implementation 'com.google.guava:guava:24.0-jre'
-  compile 'com.github.venkatperi:kotlin-util:1.0.2'
+  compile 'com.vperi:kotlin-util:1.0.2'
+
 
   testCompile 'junit:junit:4.12'
   testCompile "org.jetbrains.kotlin:kotlin-test-junit:${libs.kotlin}"
