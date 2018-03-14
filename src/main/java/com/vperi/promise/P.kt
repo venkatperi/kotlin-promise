@@ -1,13 +1,18 @@
+@file:Suppress("unused")
+
 package com.vperi.promise
 
 import com.google.common.collect.ImmutableList
 import com.vperi.kotlin.Event
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 
 /**
  * Represents the eventual completion (or failure) of an asynchronous
- * operation, and its resulting value.
+ * operation, and its resulting value (or error).
  *
+ * Creating Promises:
+ * @see promise
  */
 abstract class P<V> {
   /**
@@ -79,6 +84,9 @@ abstract class P<V> {
   fun catch(onRejected: FailureHandler<V>): P<V> =
     addHandler({ it }, onRejected)
 
+  fun <X> catchX(onRejected: FailureHandler<X>): P<X?> =
+    addHandler({ null }, onRejected)
+
   /**
    * Returns a pending promise. The single argument [handler] is called
    * when the promise settles with either the fulfillment value or
@@ -94,25 +102,68 @@ abstract class P<V> {
       { handler(Result.Value(it)) },
       { handler(Result.Error(it)) })
 
-  protected abstract val isSettled: Boolean
+  /**
+   * True if the promise has settled.
+   */
+  abstract val isDone: Boolean
 
-  protected abstract fun cancel()
+  /**
+   * Cancels a pending. cancel() has no effect if the promise
+   * has already settled. Otherwise the promise will be rejected
+   * with a [InterruptedException].
+   */
+  abstract fun cancel()
 
   protected abstract fun <X> addHandler(
     onResolved: SuccessHandler<V, X>,
     onRejected: FailureHandler<X>? = null): P<X>
 
   companion object {
+    /**
+     * Created a already settled promise in the resolved state.
+     *
+     * @param value the value of fulfillment
+     */
     @JvmStatic
     fun <V> resolve(value: V): P<V> = promise(value)
 
+    /**
+     * Create a already settled promise in the rejected state
+     *
+     * @param reason the reason of rejection
+     *
+     * @returns P<Unit>
+     */
     @JvmStatic
     fun reject(reason: Throwable): P<Unit> = promise(reason)
 
+    /**
+     * Create a already settled promise in the rejected state
+     *
+     * @param V the type of the promise's value
+     * @param reason the reason of rejection
+     *
+     * @returns P<V>
+     */
     @JvmStatic
     @JvmName("rejectWithType")
     fun <V> reject(reason: Throwable): P<V> = promise(reason)
 
+    /**
+     * Returns a promise that resolves or rejects as soon as
+     * one of the promises in the iterable resolves or rejects,
+     * with the value or reason from that promise.
+     *
+     * @param promises [Iterable] list of promises.
+     *
+     * @return A pending Promise that resolves or rejects
+     * asynchronically as soon as one of the promises in the given
+     * iterable resolves or rejects, adopting that first promise's
+     * value as its value.
+     *
+     * If the iterable passed is empty, the promise returned will be forever
+     * pending.
+     */
     @JvmStatic
     fun <V> race(promises: List<P<V>>): P<V> =
       promise({ res, rej ->
@@ -121,26 +172,58 @@ abstract class P<V> {
         }
       })
 
+    /**
+     *  Returns a single Promise that resolves when all of the promises
+     *  in the iterable argument have resolved or when the iterable argument
+     *  contains no promises. It rejects immediately with the reason of the
+     *  first promise that rejects without waiting for the other promises
+     *  to settle.
+     *
+     * @param promises [Iterable] list of promises.
+     *
+     * @return Promise which resolves to a [List] of all resolved values
+     *   from the supplied list of [promises], if all promises resolve,
+     *   or assumes the reason of rejection of the first promise that rejects.
+     */
     @JvmStatic
     fun <V> all(promises: List<P<V>>): P<List<V>> {
       val items = ImmutableList.copyOf(promises)
-      val results = HashMap<Int, V>()
+      val results = ConcurrentHashMap<Int, V>()
       val latch = CountDownLatch(items.size)
 
       return promise({ res, rej ->
         items.forEachIndexed { index, item ->
-          item.then {
-            results[index] = it
-          }.catch {
-            rej(it)
-          }.finally {
+          item.finally {
+            when (it) {
+              is Result.Value -> results[index] = it.value
+              is Result.Error -> rej(it.error)
+            }
             latch.countDown()
           }
         }
 
         latch.await()
-        if (!isSettled)
+        if (!isDone)
           res((0 until items.size).map { results[it]!! })
+      })
+    }
+
+    @JvmStatic
+    fun <V> allDone(promises: List<P<V>>): P<List<Result<V>>> {
+      val items = ImmutableList.copyOf(promises)
+      val results = ConcurrentHashMap<Int, Result<V>>()
+      val latch = CountDownLatch(items.size)
+
+      return promise({ res, _ ->
+        items.forEachIndexed { index, item ->
+          item.finally {
+            results[index] = it
+            latch.countDown()
+          }
+        }
+
+        latch.await()
+        res((0 until items.size).map { results[it]!! })
       })
     }
 

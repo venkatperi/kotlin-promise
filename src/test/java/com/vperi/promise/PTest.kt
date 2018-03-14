@@ -1,5 +1,6 @@
 package com.vperi.promise
 
+import com.vperi.promise.internal.Helper
 import net.jodah.concurrentunit.Waiter
 import org.junit.Before
 import org.junit.Test
@@ -95,7 +96,28 @@ class PTest {
       .then {
         waiter.resume()   //should get here
       }
-    waiter.await(1000, 2)
+    waiter.await(2000, 2)
+  }
+
+  @Test
+  fun cancel_pending_promise() {
+    val p = promise<Int>({ _, _ ->
+      Thread.sleep(1500)
+    })
+    p.then {
+      waiter.fail()
+    }
+      .catch {
+        waiter.resume()   //should get here
+      }
+      .then {
+        waiter.resume()   //should get here
+      }
+
+    Thread.sleep(100)
+    p.cancel()
+
+    waiter.await(2000, 2)
   }
 
   @Test
@@ -103,6 +125,7 @@ class PTest {
     promise<Int>({ resolve, _ -> resolve(1) })
       .then {
         throw Exception("test")
+        @Suppress("UNREACHABLE_CODE")
         Unit    //Can't return Nothing, so return void
       }
       .catch {
@@ -110,6 +133,19 @@ class PTest {
       }
       .then { waiter.resume() }
     waiter.await(1000)
+  }
+
+  @Test
+  fun multiple_handlers_will_get_called() {
+    val p = P.resolve(1)
+      .delay(500)
+
+    (0..9).forEach {
+      p.then {
+        waiter.resume()
+      }
+    }
+    waiter.await(10000, 10)
   }
 
   @Test
@@ -282,16 +318,33 @@ class PTest {
 
   @Test
   fun all_rejects_immediately_on_first_rejection() {
-    P.all(listOf(
-      P.resolve(1).delay(400),
+    val list = listOf(
+      P.resolve(1).delay(1400),
       rejectWithDelay(Exception("test"), 600),
       P.resolve(3).delay(2500),
-      P.resolve(3).delay(100)))
+      P.resolve(3).delay(100))
+    P.all(list)
       .then {
         waiter.fail()
       }
       .catch {
         waiter.assertEquals("test", it.message)
+        waiter.resume()
+      }
+    waiter.await(10000)
+  }
+
+  @Test
+  fun allDone_waits_for_all_to_settle() {
+    val list = listOf(
+      P.resolve(1).delay(1400),
+      rejectWithDelay(Exception("test"), 600),
+      P.resolve(3).delay(2500),
+      P.resolve(3).delay(100))
+    P.allDone(list)
+      .then {
+        waiter.assertEquals(list.size, it.size)
+        waiter.assertTrue(it[1] is Result.Error)
         waiter.resume()
       }
     waiter.await(10000)
@@ -326,6 +379,20 @@ class PTest {
       }
 
     waiter.await(5000)
+  }
+
+  @Test
+  fun lots_of_promises() {
+    val waiter = Waiter()
+    val list = Helper.failAt(1000, 50, { 1000 })
+    P.allDone(list)
+      .then {
+        P.allDone(list)
+      }
+      .then {
+        waiter.resume()
+      }
+    waiter.await(100000)
   }
 
 }

@@ -1,18 +1,30 @@
 package com.vperi.promise
 
-class Defer<V> {
-  private lateinit var resolver: ((V) -> Unit)
+/**
+ *
+ * @param V Type of the promise's value.
+ */
+interface Defer<V> {
+  /**
+   * The underlying promise
+   */
+  val promise: P<V>
 
-  private lateinit var rejector: ((Throwable) -> Unit)
+  /**
+   * Resolve's the promise with the given [result], if still pending.
+   *
+   * @param result the result of the promise
+   */
+  fun resolve(result: V)
 
-  val promise: P<V> = promise({ resolve, reject ->
-    resolver = resolve
-    rejector = reject
-  })
-
-  fun resolve(result: V) = resolver(result)
-
-  fun reject(error: Throwable) = rejector(error)
+  /**
+   * Rejects the underlying promise with the given [error]
+   *
+   * @param error the reason of rejection
+   */
+  fun reject(error: Throwable)
 }
+
+
 
 
