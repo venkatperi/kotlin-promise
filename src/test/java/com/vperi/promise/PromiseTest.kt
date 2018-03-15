@@ -1,18 +1,19 @@
 package com.vperi.promise
 
-import com.vperi.promise.internal.Helper
+import com.vperi.promise.internal.TestHelper
 import net.jodah.concurrentunit.Waiter
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.Executors
 
-fun <T> rejectWithDelay(error: Throwable, delay: Long): P<T> {
+fun <T> rejectWithDelay(error: Throwable, delay: Long): Promise<T> {
   return promise { _, r ->
     Thread.sleep(delay)
     r(error)
   }
 }
 
-class PTest {
+class PromiseTest {
   private var waiter = Waiter()
 
   @Before
@@ -22,7 +23,7 @@ class PTest {
 
   @Test
   fun already_resolved_promise() {
-    P.resolve(1)
+    Promise.resolve(1)
       .then {
         waiter.resume()
         waiter.assertEquals(1, it)
@@ -41,7 +42,7 @@ class PTest {
 
   @Test
   fun already_rejected_promise() {
-    P.reject(Exception("test msg"))
+    Promise.reject(Exception("test msg"))
       .catch {
         waiter.assertEquals("test msg", it.message)
         waiter.resume() // should get here
@@ -85,7 +86,7 @@ class PTest {
 
   @Test
   fun executor_throws_exception() {
-    promise<Int>({ _, _ ->
+    promise<Unit>({ _, _ ->
       Thread.sleep(500)
       throw Exception("test")
     }).then { waiter.fail() }
@@ -137,7 +138,7 @@ class PTest {
 
   @Test
   fun multiple_handlers_will_get_called() {
-    val p = P.resolve(1)
+    val p = Promise.resolve(1)
       .delay(500)
 
     (0..9).forEach {
@@ -150,7 +151,7 @@ class PTest {
 
   @Test
   fun catch_propagates_result_when_not_rejected() {
-    P.resolve(1)
+    Promise.resolve(1)
       .catch {
         waiter.fail()
         0
@@ -162,7 +163,7 @@ class PTest {
 
   @Test
   fun fix_error_with_catch_and_continue_chain() {
-    P.resolve(1)
+    Promise.resolve(1)
       .then {
         waiter.resume()
         when {
@@ -185,7 +186,7 @@ class PTest {
 
   @Test
   fun catch_down_the_line() {
-    P.resolve(1)
+    Promise.resolve(1)
       .then { throw Exception("test") }
       .then { waiter.fail() }
       .then { waiter.fail() }
@@ -199,24 +200,49 @@ class PTest {
   }
 
   @Test
+  fun catchX_sends_null_on_success() {
+    Promise.onUnhandledException += {
+      println(it!!.message)
+    }
+    Promise.resolve("test")
+      .catchX { 1 }
+      .then {
+        waiter.assertNull(it)
+        waiter.resume()
+      }
+    waiter.await(1000)
+  }
+
+  @Test
+  fun catchX_on_failure() {
+    Promise.reject(Exception())
+      .catchX { 1 }
+      .then {
+        waiter.assertEquals(1, it)
+        waiter.resume()
+      }
+    waiter.await(1000)
+  }
+
+  @Test
   fun uncaught_exception() {
     val uncaught = { e: Throwable? ->
       waiter.assertEquals("uncaught exception", e?.message)
       waiter.resume()
     }
-    P.onUnhandledException += uncaught
-    P.reject(Exception("uncaught exception"))
+    Promise.onUnhandledException += uncaught
+    Promise.reject(Exception("uncaught exception"))
       .then { waiter.fail() }
     waiter.await(1000)
-    P.onUnhandledException -= uncaught
+    Promise.onUnhandledException -= uncaught
   }
 
   @Test
   fun finally_is_called_when_resolved() {
-    P.resolve(1)
+    Promise.resolve(1)
       .catch {
         waiter.fail()
-        0
+        2
       }
       .finally {
         when (it) {
@@ -230,7 +256,7 @@ class PTest {
 
   @Test
   fun finally_is_called_when_rejected() {
-    P.reject(Exception("test"))
+    Promise.reject(Exception("test"))
       .then { waiter.resume() }
       .then { waiter.resume() }
       .finally {
@@ -245,10 +271,10 @@ class PTest {
 
   @Test
   fun unwrap_nested_promise() {
-    P.resolve(1)
+    Promise.resolve(1)
       .then {
         waiter.resume()
-        P.resolve(it + 1)
+        Promise.resolve(it + 1)
       }
       .then { it: Int ->
         waiter.resume()
@@ -276,7 +302,7 @@ class PTest {
 
   @Test
   fun delay() {
-    P.resolve(1)
+    Promise.resolve(1)
       .delay(500)
       .then {
         waiter.assertEquals(1, it)
@@ -287,7 +313,7 @@ class PTest {
 
   @Test
   fun all1() {
-    P.all(listOf(P.resolve(1), P.resolve(2), P.resolve(3)))
+    Promise.all(listOf(Promise.resolve(1), Promise.resolve(2), Promise.resolve(3)))
       .then {
         it.reduce { acc, x -> acc + x }
       }
@@ -301,10 +327,10 @@ class PTest {
 
   @Test
   fun all2() {
-    P.all(listOf(
-      P.resolve(1).delay(1500),
-      P.resolve(2).delay(200),
-      P.resolve(3).delay(600)))
+    Promise.all(listOf(
+      Promise.resolve(1).delay(1500),
+      Promise.resolve(2).delay(200),
+      Promise.resolve(3).delay(600)))
       .then {
         it.reduce { acc, x -> acc + x }
       }
@@ -319,11 +345,11 @@ class PTest {
   @Test
   fun all_rejects_immediately_on_first_rejection() {
     val list = listOf(
-      P.resolve(1).delay(1400),
+      Promise.resolve(1).delay(1400),
       rejectWithDelay(Exception("test"), 600),
-      P.resolve(3).delay(2500),
-      P.resolve(3).delay(100))
-    P.all(list)
+      Promise.resolve(3).delay(2500),
+      Promise.resolve(3).delay(100))
+    Promise.all(list)
       .then {
         waiter.fail()
       }
@@ -337,11 +363,11 @@ class PTest {
   @Test
   fun allDone_waits_for_all_to_settle() {
     val list = listOf(
-      P.resolve(1).delay(1400),
+      Promise.resolve(1).delay(1400),
       rejectWithDelay(Exception("test"), 600),
-      P.resolve(3).delay(2500),
-      P.resolve(3).delay(100))
-    P.allDone(list)
+      Promise.resolve(3).delay(2500),
+      Promise.resolve(3).delay(100))
+    Promise.allDone(list)
       .then {
         waiter.assertEquals(list.size, it.size)
         waiter.assertTrue(it[1] is Result.Error)
@@ -352,10 +378,10 @@ class PTest {
 
   @Test
   fun race_resolves_with_first_resolution() {
-    P.race(listOf(
-      P.resolve(1).delay(1500),
-      P.resolve(2).delay(200),
-      P.resolve(3).delay(600)))
+    Promise.race(listOf(
+      Promise.resolve(1).delay(1500),
+      Promise.resolve(2).delay(200),
+      Promise.resolve(3).delay(600)))
       .then {
         waiter.assertEquals(2, it)
         waiter.resume()
@@ -366,10 +392,10 @@ class PTest {
 
   @Test
   fun race_rejects_with_first_rejection() {
-    P.race(listOf(
-      P.resolve(1).delay(1500),
+    Promise.race(listOf(
+      Promise.resolve(1).delay(1500),
       rejectWithDelay(Exception("test"), 300),
-      P.resolve(3).delay(600)))
+      Promise.resolve(3).delay(600)))
       .then {
         waiter.fail()
       }
@@ -384,15 +410,41 @@ class PTest {
   @Test
   fun lots_of_promises() {
     val waiter = Waiter()
-    val list = Helper.failAt(1000, 50, { 1000 })
-    P.allDone(list)
+    val list = TestHelper.failAt(1000, 50, { 1000 })
+    Promise.allDone(list)
       .then {
-        P.allDone(list)
+        Promise.allDone(list)
       }
       .then {
         waiter.resume()
       }
     waiter.await(100000)
+  }
+
+  @Test
+  fun future_to_promise() {
+    Executors.newCachedThreadPool().submit {
+      Thread.sleep(500)
+    }.toPromise().then {
+      waiter.resume()
+    }
+    waiter.await(1000)
+  }
+
+  @Test
+  fun future_to_promise_failure() {
+    Executors.newCachedThreadPool().submit {
+      Thread.sleep(500)
+      throw Exception("test")
+    }.toPromise()
+      .then {
+        waiter.fail()
+      }
+      .catch {
+        waiter.assertEquals("test", it.message)
+        waiter.resume()
+      }
+    waiter.await(1000)
   }
 
 }

@@ -1,10 +1,8 @@
 package com.vperi.promise.internal
 
-import com.google.common.util.concurrent.SettableFuture
 import com.vperi.promise.Result
 
-class SettledPimpl<V>(result: Result<V>) : PImpl<V>() {
-
+class SettledPromise<V>(result: Result<V>) : AbstractPromise<V>() {
 
   internal constructor(value: V) : this(Result.Value(value))
 

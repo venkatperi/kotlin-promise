@@ -4,7 +4,7 @@ import com.vperi.promise.Executor
 import com.vperi.promise.Result
 import java.util.concurrent.Future
 
-class SettablePImpl<V>(executor: Executor<V>) : PImpl<V>() {
+class SettablePromise<V>(executor: Executor<V>) : AbstractPromise<V>() {
   private var execFuture: Future<*>
 
   internal fun resolve(value: V) {

@@ -12,5 +12,4 @@ sealed class Result<out V> {
       return "Error[${error.message}]"
     }
   }
-
 }

@@ -1,25 +1,25 @@
 package com.vperi.promise.internal
 
-import com.vperi.promise.P
+import com.vperi.promise.Promise
 import com.vperi.promise.promise
 
-class Helper {
+class TestHelper {
   companion object {
-    fun success(sleep: Long): P<Unit> {
+    fun success(sleep: Long): Promise<Unit> {
       return promise { r, _ ->
         Thread.sleep(sleep)
         r(Unit)
       }
     }
 
-    fun fail(sleep: Long): P<Unit> {
+    fun fail(sleep: Long): Promise<Unit> {
       return promise { _, r ->
         Thread.sleep(sleep)
         r(Exception("fail"))
       }
     }
 
-    fun failAt(total: Int, failAt: Int, sleep: (Int) -> Int): List<P<Unit>> {
+    fun failAt(total: Int, failAt: Int, sleep: (Int) -> Int): List<Promise<Unit>> {
       return (0 until total).map {
         when (it) {
           failAt -> fail(sleep(it).toLong() / 2)

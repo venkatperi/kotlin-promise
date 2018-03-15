@@ -1,31 +1,34 @@
+@file:Suppress("unused")
+
 package com.vperi.benchmarks.custom
 
-import com.vperi.promise.internal.Helper
-import com.vperi.promise.P
+import com.vperi.promise.Promise
+import com.vperi.promise.internal.TestHelper
 import net.jodah.concurrentunit.Waiter
-import org.openjdk.jmh.annotations.*
+import org.openjdk.jmh.annotations.Benchmark
+import org.openjdk.jmh.annotations.Scope
+import org.openjdk.jmh.annotations.State
 
 @State(Scope.Thread)
 open class Custom() {
 
-  var list: List<P<Unit>>? = null
+  var list: List<Promise<Unit>>? = null
 
   fun run(total: Int, failAt: Int, sleep: (Int) -> Int) {
     val waiter = Waiter()
-    list = Helper.failAt(total, failAt, sleep)
-    P.all(list!!)
+    list = TestHelper.failAt(total, failAt, sleep)
+    Promise.all(list!!)
       .catchX {
-        //        P.allDone(list!!)
-//      }.then {
         waiter.resume()
       }
+
     waiter.await(100000)
   }
 
   //  @TearDown(Level.Invocation)
   fun teardown() {
     val waiter = Waiter()
-    P.allDone(list!!).then {
+    Promise.allDone(list!!).then {
       waiter.resume()
     }
     waiter.await(100000)

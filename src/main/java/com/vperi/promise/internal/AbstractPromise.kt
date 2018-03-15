@@ -4,12 +4,10 @@ import com.google.common.util.concurrent.FutureCallback
 import com.google.common.util.concurrent.SettableFuture
 import com.vperi.promise.*
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicInteger
 
-abstract class PImpl<V> internal constructor() : P<V>() {
-  private val children = ArrayList<PImpl<*>>()
+abstract class AbstractPromise<V> internal constructor() : Promise<V>() {
+  private val children = ArrayList<AbstractPromise<*>>()
   private val id: Int = nextId.getAndIncrement()
 
   val settled = SettableFuture.create<Result<V>>()!!
@@ -23,7 +21,7 @@ abstract class PImpl<V> internal constructor() : P<V>() {
 
   protected var hasHandlers: Boolean = false
 
-  fun walk(visitor: PImpl<*>.() -> Unit) {
+  fun walk(visitor: AbstractPromise<*>.() -> Unit) {
     children.forEach {
       it.visitor()
       it.walk(visitor)
@@ -31,7 +29,7 @@ abstract class PImpl<V> internal constructor() : P<V>() {
   }
 
   override fun <X> addHandler(onResolved: SuccessHandler<V, X>,
-    onRejected: FailureHandler<X>?): P<X> {
+    onRejected: FailureHandler<X>?): Promise<X> {
     hasHandlers = true
     val p = deferred<X>()
 
@@ -57,26 +55,15 @@ abstract class PImpl<V> internal constructor() : P<V>() {
       }
     }, execService)
 
-    children += p.promise as PImpl<*>
+    children += p.promise as AbstractPromise<*>
     return p.promise
   }
 
   val execService: ExecutorService
-    get() = Companion.execService
+    get() = Promise.executorService
 
   companion object {
     var nextId = AtomicInteger(0)
-
-    private val threadCount = AtomicInteger(0)
-
-    private val threadFactory = ThreadFactory {
-      Executors.defaultThreadFactory().newThread(it).apply {
-        name = "${nextId.get() - 1}/${threadCount.getAndIncrement()}"
-      }
-    }
-
-//    var execService = Executors.newCachedThreadPool()!!
-    var execService = Executors.newFixedThreadPool(100)!!
   }
 }
 

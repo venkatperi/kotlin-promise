@@ -6,6 +6,8 @@ import com.google.common.collect.ImmutableList
 import com.vperi.kotlin.Event
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Represents the eventual completion (or failure) of an asynchronous
@@ -14,7 +16,7 @@ import java.util.concurrent.CountDownLatch
  * Creating Promises:
  * @see promise
  */
-abstract class P<V> {
+abstract class Promise<V> {
   /**
    * Returns a pending promise. When the current promise settles,
    * the handler function, either [onResolved] or [onRejected], gets
@@ -39,7 +41,7 @@ abstract class P<V> {
    */
   fun <X> then(
     onResolved: SuccessHandler<V, X>,
-    onRejected: FailureHandler<X>): P<X> =
+    onRejected: FailureHandler<X>): Promise<X> =
     addHandler(onResolved, onRejected)
 
   /**
@@ -54,7 +56,7 @@ abstract class P<V> {
    *
    * @return a pending promise.
    */
-  fun <X> then(onResolved: SuccessHandler<V, X>): P<X> =
+  fun <X> then(onResolved: SuccessHandler<V, X>): Promise<X> =
     addHandler(onResolved)
 
   /**
@@ -67,7 +69,7 @@ abstract class P<V> {
    *
    * @return A pending promise which resolves to [Unit]
    */
-  fun then(): P<Unit> =
+  fun then(): Promise<Unit> =
     addHandler({})
 
   /**
@@ -81,10 +83,19 @@ abstract class P<V> {
    *
    * @return a pending promise.
    */
-  fun catch(onRejected: FailureHandler<V>): P<V> =
-    addHandler({ it }, onRejected)
+  fun catch(onRejected: FailureHandler<V>): Promise<V> {
+    return addHandler({ it }, onRejected)
+  }
 
-  fun <X> catchX(onRejected: FailureHandler<X>): P<X?> =
+  /**
+   * Like [catch], catchX() handles rejection cases for the current promise.
+   * Where it differs is that it allows the failure handler to return
+   * an arbitrary type, and does not propagate the current promise's value on
+   * success.  If the current promise succeeds, catchX() will
+   * attempt to cast the fulfillment value to the new type and return that,
+   * or null.
+   */
+  fun <X> catchX(onRejected: FailureHandler<X?>): Promise<X?> =
     addHandler({ null }, onRejected)
 
   /**
@@ -97,7 +108,7 @@ abstract class P<V> {
    * rejection reason [Result.Error]
    *
    */
-  fun <X> finally(handler: (Result<V>) -> X): P<X> =
+  fun <X> finally(handler: (Result<V>) -> X): Promise<X> =
     addHandler(
       { handler(Result.Value(it)) },
       { handler(Result.Error(it)) })
@@ -114,9 +125,9 @@ abstract class P<V> {
    */
   abstract fun cancel()
 
-  protected abstract fun <X> addHandler(
+  internal abstract fun <X> addHandler(
     onResolved: SuccessHandler<V, X>,
-    onRejected: FailureHandler<X>? = null): P<X>
+    onRejected: FailureHandler<X>? = null): Promise<X>
 
   companion object {
     /**
@@ -125,17 +136,17 @@ abstract class P<V> {
      * @param value the value of fulfillment
      */
     @JvmStatic
-    fun <V> resolve(value: V): P<V> = promise(value)
+    fun <V> resolve(value: V): Promise<V> = promise(value)
 
     /**
      * Create a already settled promise in the rejected state
      *
      * @param reason the reason of rejection
      *
-     * @returns P<Unit>
+     * @returns Promise<Unit>
      */
     @JvmStatic
-    fun reject(reason: Throwable): P<Unit> = promise(reason)
+    fun reject(reason: Throwable): Promise<Unit> = promise(reason)
 
     /**
      * Create a already settled promise in the rejected state
@@ -143,11 +154,11 @@ abstract class P<V> {
      * @param V the type of the promise's value
      * @param reason the reason of rejection
      *
-     * @returns P<V>
+     * @returns Promise<V>
      */
     @JvmStatic
     @JvmName("rejectWithType")
-    fun <V> reject(reason: Throwable): P<V> = promise(reason)
+    fun <V> reject(reason: Throwable): Promise<V> = promise(reason)
 
     /**
      * Returns a promise that resolves or rejects as soon as
@@ -165,7 +176,7 @@ abstract class P<V> {
      * pending.
      */
     @JvmStatic
-    fun <V> race(promises: List<P<V>>): P<V> =
+    fun <V> race(promises: List<Promise<V>>): Promise<V> =
       promise({ res, rej ->
         ImmutableList.copyOf(promises).forEach {
           it.then(res).catch(rej)
@@ -186,7 +197,7 @@ abstract class P<V> {
      *   or assumes the reason of rejection of the first promise that rejects.
      */
     @JvmStatic
-    fun <V> all(promises: List<P<V>>): P<List<V>> {
+    fun <V> all(promises: List<Promise<V>>): Promise<List<V>> {
       val items = ImmutableList.copyOf(promises)
       val results = ConcurrentHashMap<Int, V>()
       val latch = CountDownLatch(items.size)
@@ -209,7 +220,7 @@ abstract class P<V> {
     }
 
     @JvmStatic
-    fun <V> allDone(promises: List<P<V>>): P<List<Result<V>>> {
+    fun <V> allDone(promises: List<Promise<V>>): Promise<List<Result<V>>> {
       val items = ImmutableList.copyOf(promises)
       val results = ConcurrentHashMap<Int, Result<V>>()
       val latch = CountDownLatch(items.size)
@@ -227,7 +238,20 @@ abstract class P<V> {
       })
     }
 
+    var config: Configuration = defaultConfig()
+
+    @JvmStatic
+    val executorService: ExecutorService
+      get() = config.executorService
+
     @JvmStatic
     val onUnhandledException = Event<Throwable>()
+
+    private fun defaultConfig(): Configuration {
+      return Configuration(
+        executorService = Executors.newCachedThreadPool()
+      )
+    }
   }
 }
+

@@ -8,7 +8,7 @@ interface Defer<V> {
   /**
    * The underlying promise
    */
-  val promise: P<V>
+  val promise: Promise<V>
 
   /**
    * Resolve's the promise with the given [result], if still pending.
