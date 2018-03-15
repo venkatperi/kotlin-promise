@@ -301,6 +301,36 @@ class PromiseTest {
   }
 
   @Test
+  fun example_2() {
+    promise<String>({ _, reject ->
+      //some async operation which eventually throws an exception
+      Thread.sleep(500)
+      reject(Exception("some error"))
+    }).then {
+      println("hello $it")      // doesn't get here
+    }.catch {
+      println(it.message)
+      waiter.resume()
+    }
+    waiter.await(1000)
+  }
+
+  @Test
+  fun example_3() {
+    promise<String>({ resolve, _ ->
+      resolve("world")
+    }).then {
+      "hello $it"
+    }.then {
+      it.length
+    }.then(::println)
+      .then {
+        waiter.resume()
+      }
+    waiter.await(1000)
+  }
+
+  @Test
   fun delay() {
     Promise.resolve(1)
       .delay(500)

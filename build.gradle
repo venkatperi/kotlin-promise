@@ -51,7 +51,7 @@ sourceSets {
 }
 
 dokka {
-  includes = ['readme.md']
+  includes = ['intro.md']
   outputFormat = 'gfm'
   reportUndocumented = false
   outputDirectory = "$projectDir/docs"
