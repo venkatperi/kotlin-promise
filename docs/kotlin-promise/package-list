@@ -1,0 +1,4 @@
+$dokka.format:gfm
+$dokka.linkExtension:md
+$dokka.location:com.vperi.promise$toPromise(java.util.concurrent.Future((com.vperi.promise.toPromise.V)))com.vperi.promise/java.util.concurrent.-future/to-promise.md
+com.vperi.promise

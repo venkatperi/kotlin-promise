@@ -1,19 +1,12 @@
 # kotlin-promise
 
-`kotlin-promise` is  minimal API for kotlin [promises](https://en.wikipedia.org/wiki/Futures_and_promises) based largely on native [Javascript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises) promises.
+`kotlin-promise` is a minimal API for kotlin [promises](https://en.wikipedia.org/wiki/Futures_and_promises) based largely on native [Javascript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises) promises.
 
 ## Creating promises
 
- `promise()` is the only way to create a Promise:
+
  ```
 fun promise<V>(executor: Executor<V>): P<V>
-```
-
-where:
-```
-Executor<V> = (Resolve<V>, Reject) -> Unit
-Resolve<V>  = (V) -> Unit
-Reject      = (Exception) -> Unit
 ```
 
 `promise()` returns a new promise which eventually resolves to a value of type `V` or an rejects with a `Throwable` reason.
@@ -21,7 +14,7 @@ Reject      = (Exception) -> Unit
 
 ### Parameters
 * `executor` A function that accepts two arguments arguments,
-`resolve` and `reject`, of types `Resolve<V>` and `Reject`, respectively. The executor function is immediately executed asynchronously, passing `resolve` and `reject` functions (the executor may be called before `promise()`  even returns the created object).
+`resolve` and `reject`. The executor function is immediately executed asynchronously, passing `resolve` and `reject` functions (the executor may be called before `promise()`  even returns the created object).
 
 ### Description
 The `resolve` and `reject` functions, when called, resolve or reject the promise, respectively. The executor normally initiates some asynchronous work, and then, once that completes, either calls the `resolve` function to resolve the promise or else `reject` if if an error occurred.

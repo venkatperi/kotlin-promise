@@ -54,7 +54,15 @@ dokka {
   includes = ['readme.md']
   outputFormat = 'gfm'
   reportUndocumented = false
-  outputDirectory = "$buildDir/gfm"
+  outputDirectory = "$projectDir/docs"
+  packageOptions {
+    prefix = "com.vperi.promise.internal" 
+    suppress = true
+  }
+  packageOptions {
+    prefix = "com.vperi.benchmarks" 
+    suppress = true
+  }
 }
 
 dependencies {
