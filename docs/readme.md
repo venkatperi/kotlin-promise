@@ -8,47 +8,47 @@
 
 #### Async Task
 
-```
+``` kotlin
  promise<String>({ resolve, reject ->
-      // This block runs in a separate thread &
-      // Eventually returns a string
-      Thread.Sleep(500)
-      resolve("world")
-    }).then { //it: String ->
-      println("hello " + it)			//=> hello world
-    }
+  // This block runs in a separate thread &
+  // Eventually returns a string
+  Thread.Sleep(500)
+  resolve("world")
+}).then { //it: String ->
+  println("hello " + it)			//=> hello world
+}
 ```
 
 #### Handle Errors
 
-```
- promise<String>({ resolve, reject ->
-      // Runs in a separate thread &
-      // eventually throws an exception
-      Thread.sleep(500)
-      throw Exception("some error")
-    }).then { //it: String ->
-      println("hello " + it)			// doesn't get here
-    }.catch{ // it : Throwable ->
-      println(it.message)         //=> some error
-    }
+``` kotlin
+promise<String>({ resolve, reject ->
+  // Runs in a separate thread &
+  // eventually throws an exception
+  Thread.sleep(500)
+  throw Exception("some error")
+}).then { //it: String ->
+  println("hello " + it)			// doesn't get here
+}.catch{ // it : Throwable ->
+  println(it.message)         //=> some error
+}
 ```
 
 #### Chaining Promises
 
-```
- promise<String>({ resolve, reject ->
-      resolve("world")
-    }).then {
-      "hello $it"       // returns String
-    }.then {
-      it.length         // change type
-    }.then(::println)   //=> 11
+``` kotlin
+promise<String>({ resolve, reject ->
+  resolve("world")
+}).then {
+  "hello $it"       // returns String
+}.then {
+  it.length         // change type
+}.then(::println)   //=> 11
 ```
 
 ## Creating promises
 
-```
+``` kotlin
 fun promise<V>(executor: Executor<V>): P<V>
 ```
 
@@ -72,7 +72,7 @@ Install with [jitpack](https://jitpack.io/#com.vperi/kotlin-promise/):
 
 ### Gradle
 
-```
+``` gradle
 repositories {
   maven { url 'https://jitpack.io' }
 }
@@ -87,7 +87,7 @@ dependencies {
 
 ### Java Futures
 
-```
+``` kotlin
 fun <V> Future<V>.toPromise(): Promise<V> {
   return promise { resolve, reject ->
     try {
@@ -101,7 +101,7 @@ fun <V> Future<V>.toPromise(): Promise<V> {
 
 Usage:
 
-```
+``` kotlin
 val someFuture: Future<V>
 someFuture.promise()
   .then { // it: V ->
@@ -114,7 +114,7 @@ someFuture.promise()
 
 ### Google Android GMS Tasks to Promises
 
-```
+``` kotlin
 fun <T> Task<T>.promise(): P<T> =
   promise({ resolve, reject ->
     addOnCompleteListener {
@@ -140,7 +140,7 @@ fun Task<Void>.promise(): P<Unit> =
 
 Usage:
 
-```
+``` kotlin
 val someTask: Task<V>
 someTask.promise()
  .then { // it: -> V
