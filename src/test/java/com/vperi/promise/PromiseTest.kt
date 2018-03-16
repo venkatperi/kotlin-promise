@@ -4,6 +4,7 @@ import com.vperi.promise.internal.TestHelper
 import net.jodah.concurrentunit.Waiter
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 
 fun <T> rejectWithDelay(error: Throwable, delay: Long): Promise<T> {
@@ -477,4 +478,31 @@ class PromiseTest {
     waiter.await(1000)
   }
 
+  @Test
+  fun runnable_promise() {
+    val block = Runnable {
+      Thread.sleep(500)
+      waiter.resume()
+    }
+    promise(block)
+      .then {
+        waiter.resume()
+      }
+    waiter.await(1000, 2)
+  }
+
+  @Test
+  fun callable_promise() {
+    val block = Callable {
+      Thread.sleep(500)
+      waiter.resume()
+      100
+    }
+    promise(block)
+      .then {
+        waiter.assertEquals(100, it)
+        waiter.resume()
+      }
+    waiter.await(1000, 2)
+  }
 }

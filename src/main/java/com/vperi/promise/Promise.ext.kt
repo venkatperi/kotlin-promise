@@ -3,6 +3,7 @@ package com.vperi.promise
 import com.vperi.promise.internal.DeferImpl
 import com.vperi.promise.internal.SettablePromise
 import com.vperi.promise.internal.SettledPromise
+import java.util.concurrent.Callable
 
 /**
  * Returns a promise
@@ -44,6 +45,35 @@ fun <V> promise(value: V): Promise<V> = SettledPromise(value)
 fun <V> promise(error: Throwable): Promise<V> = SettledPromise(error)
 
 /**
+ * Convenience method. Returns a promise which resolves when the
+ * [Runnable] finishes. The Runnable is executed asynchronously.
+ * If the Runnable throws, the returned promise rejects with the reason.
+ *
+ * @param block [Runnable] to execute.
+ * @return Promise<Unit>
+ */
+fun promise(block: Runnable): Promise<Unit> =
+  promise { resolve, _ ->
+    block.run()
+    resolve(Unit)
+  }
+
+/**
+ * Convenience method. Returns a promise which resolves when the
+ * [Callable] finishes with the value returned by the Callable.
+ * The Callable is executed asynchronously.  If the Callable throws,
+ * the returned promise rejects with the reason.
+ *
+ * @param V type of the promise.
+ * @param block [Callable] to execute.
+ * @return Promise<V>
+ */
+fun <V> promise(block: Callable<V>): Promise<V> =
+  promise { resolve, _ ->
+    resolve(block.call())
+  }
+
+/**
  * Returns a [Defer] object which can be eventually settled
  *
  * @param V Type of the promise's value
@@ -69,10 +99,4 @@ fun <V> Promise<V>.delay(msTime: Long): Promise<V> =
     Thread.sleep(msTime)
     it
   }
-
-//fun <V> List<Promise<V>>.allDone(): Promise<List<Result<V>>> = Promise.allDone(this)
-//
-//fun <V> List<Promise<V>>.all(): Promise<List<V>> = Promise.all(this)
-//
-//fun <V> List<Promise<V>>.race(): Promise<V> = Promise.race(this)
 
