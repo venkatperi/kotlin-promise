@@ -1,6 +1,6 @@
 
 
-`kotlin-promise` is a minimal API for kotlin [promises](https://en.wikipedia.org/wiki/Futures_and_promises) based largely on native [Javascript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises) promises.
+[![](https://jitpack.io/v/com.vperi/kotlin-promise.svg)](https://jitpack.io/#com.vperi/kotlin-promise)
 
 ### All Types
 

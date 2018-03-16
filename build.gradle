@@ -54,13 +54,13 @@ dokka {
   includes = ['intro.md']
   outputFormat = 'gfm'
   reportUndocumented = false
-  outputDirectory = "$projectDir/docs"
+  outputDirectory = "$buildDir/gfm"
   packageOptions {
-    prefix = "com.vperi.promise.internal" 
+    prefix = "com.vperi.promise.internal"
     suppress = true
   }
   packageOptions {
-    prefix = "com.vperi.benchmarks" 
+    prefix = "com.vperi.benchmarks"
     suppress = true
   }
 }
@@ -80,4 +80,13 @@ jmh {
   warmupIterations = 1
   iterations = 10
 }
+
+task copyDocs(type: Copy, dependsOn: ["dokka"]) {
+  from "$buildDir/gfm/kotlin-promise"
+  into "$projectDir/docs"
+  rename 'index.md', 'readme.md'
+
+}
+
+task docs(dependsOn: ["copyDocs"])
 

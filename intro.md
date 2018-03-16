@@ -1,3 +1,5 @@
+[![](https://jitpack.io/v/com.vperi/kotlin-promise.svg)](https://jitpack.io/#com.vperi/kotlin-promise)
+
 # Module kotlin-promise
 
 `kotlin-promise` is a minimal API for kotlin [promises](https://en.wikipedia.org/wiki/Futures_and_promises) based largely on native [Javascript](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises) promises.
@@ -64,3 +66,19 @@ The `resolve` and `reject` functions, when called, resolve or reject the promise
 
 If an error is thrown in the executor function, the promise
 is rejected.
+
+## Installation
+Install with [jitpack](https://jitpack.io/#com.vperi/kotlin-promise/):
+
+### Gradle
+
+```
+  repositories {
+    maven { url 'https://jitpack.io' }
+  }
+
+  dependencies {
+	  compile 'com.vperi:kotlin-promise:<latest-version-here>'
+	}
+
+```
