@@ -1,6 +1,6 @@
 
 
-[![](https://jitpack.io/v/com.vperi/kotlin-promise.svg)](https://jitpack.io/#com.vperi/kotlin-promise)
+[![](https://jitpack.io/v/com.vperi/kotlin-promise.svg)](https://jitpack.io/#com.vperi/kotlin-promise) [![Build Status](https://travis-ci.org/venkatperi/kotlin-promise.svg?branch=master)](https://travis-ci.org/venkatperi/kotlin-promise)
 
 ### All Types
 
