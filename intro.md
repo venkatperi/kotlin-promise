@@ -73,12 +73,12 @@ Install with [jitpack](https://jitpack.io/#com.vperi/kotlin-promise/):
 ### Gradle
 
 ```
-  repositories {
-    maven { url 'https://jitpack.io' }
-  }
+repositories {
+  maven { url 'https://jitpack.io' }
+}
 
-  dependencies {
-	  compile 'com.vperi:kotlin-promise:<latest-version-here>'
-	}
+dependencies {
+  compile 'com.vperi:kotlin-promise:<latest-version-here>'
+}
 
 ```
