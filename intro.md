@@ -82,3 +82,66 @@ dependencies {
 }
 
 ```
+
+## Converting Callbacks to Promises
+
+### Java Futures
+```
+fun <V> Future<V>.toPromise(): Promise<V> {
+  return promise { resolve, reject ->
+    try {
+      resolve(get())
+    } catch (e: Exception) {
+      reject(e.cause ?: e)
+    }
+  }
+}
+```
+Usage:
+```
+val someFuture: Future<V>
+someFuture.promise()
+  .then { // it: V ->
+    ...
+  }
+  .catch { // it: Throwable ->
+    ...
+  }
+```
+
+### Google Android GMS Tasks to Promises
+```
+fun <T> Task<T>.promise(): P<T> =
+  promise({ resolve, reject ->
+    addOnCompleteListener {
+      when {
+        it.isSuccessful -> resolve(it.result)
+        else -> reject(it.exception!!)
+      }
+    }
+  })
+
+// Special case: Task<Void> -> P<Unit>
+@JvmName("promiseVoid")
+fun Task<Void>.promise(): P<Unit> =
+  promise({ resolve, reject ->
+    addOnCompleteListener {
+      when {
+        it.isSuccessful -> resolve(Unit)
+        else -> reject(it.exception!!)
+      }
+    }
+  })
+```
+Usage:
+
+```
+val someTask: Task<V>
+someTask.promise()
+ .then { // it: -> V
+   ...
+ }
+ .catch { // it: Throwable ->
+   ...
+ }
+```
