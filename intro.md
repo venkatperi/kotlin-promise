@@ -9,7 +9,7 @@
 #### Async Task
 
 ````kotlin
- promise<String>({ resolve, reject ->
+promise<String>({ resolve, reject ->
   // This block runs in a separate thread &
   // Eventually returns a string
   Thread.Sleep(500)
@@ -54,18 +54,16 @@ promise<String>({ resolve, reject ->
 fun promise<V>(executor: Executor<V>): P<V>
 ```
 
-`promise()` returns a new promise which eventually resolves to a value of type `V` or an rejects with a `Throwable` reason.
+`promise()` returns a new [Promise] which eventually resolves to a value of type `V` or an rejects with a `Throwable` reason.
 
 
 ### Parameters
-* `executor` A function that accepts two arguments arguments,
-`resolve` and `reject`. The executor function is immediately executed asynchronously, passing `resolve` and `reject` functions (the executor may be called before `promise()`  even returns the created object).
+* `executor` A function that accepts two arguments arguments, `resolve` and `reject`. The executor function is immediately executed asynchronously, passing `resolve` and `reject` functions (the executor may be called before `promise()`  even returns the created object).
 
 ### Description
 The `resolve` and `reject` functions, when called, resolve or reject the promise, respectively. The executor normally initiates some asynchronous work, and then, once that completes, either calls the `resolve` function to resolve the promise or else `reject` if if an error occurred.
 
-If an error is thrown in the executor function, the promise
-is rejected.
+If an error is thrown in the executor function, the promise is rejected.
 
 ## Installation
 Install with [jitpack](https://jitpack.io/#com.vperi/kotlin-promise/):

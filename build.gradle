@@ -5,6 +5,7 @@ buildscript {
         kotlin  : '1.2.30',
         kovenant: '3.3.0',
         dokka   : '0.9.16',
+        kotlinx   : '0.22.5',
     ] << (findProperty('libs') ?: [dummy: ""])
   }
   repositories {
@@ -69,6 +70,9 @@ dependencies {
   implementation "org.jetbrains.kotlin:kotlin-stdlib:${libs.kotlin}"
   implementation 'com.google.guava:guava:24.0-jre'
   compile 'com.vperi:kotlin-util:1.0.2'
+  compile "org.jetbrains.kotlinx:kotlinx-coroutines-core:${libs.kotlinx}"
+  compile "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:${libs.kotlinx}"
+
 
   testCompile 'junit:junit:4.12'
   testCompile "org.jetbrains.kotlin:kotlin-test-junit:${libs.kotlin}"
@@ -89,4 +93,10 @@ task copyDocs(type: Copy, dependsOn: ["dokka"]) {
 }
 
 task docs(dependsOn: ["copyDocs"])
+
+kotlin {
+  experimental {
+    coroutines "enable"
+  }
+}
 
