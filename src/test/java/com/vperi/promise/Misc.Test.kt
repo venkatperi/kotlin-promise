@@ -16,12 +16,12 @@ class MiscTest : BaseTest() {
   fun cannot_cancel_completable_future() {
     val f = CompletableFuture.runAsync {
       Thread.sleep(2000)
-      waiter.fail("future wasn't cancelled")
+      waiter.fail("future wasn't cancelled")  //This is executed, even though we cancel the future
     }.whenComplete { _, _ ->
-      waiter.resume()
+      waiter.resume()  // doesn't get here, otherwise test would complete OK
     }
     Thread.sleep(250)
-    f.cancel(true)
+    f.cancel(true)                            // no effect
     waiter.await(5000)
   }
 
